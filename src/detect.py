@@ -32,27 +32,31 @@ def detect_plate(frame):
     contours = imutils.grab_contours(contours)
     contours = sorted(contours, key=cv2.contourArea, reverse=True)[:20]
 
-    best_quad = None
-    best_area = 0
+    candidates = []
 
     for cnt in contours:
         peri = cv2.arcLength(cnt, True)
-        approx = cv2.approxPolyDP(cnt, 0.02 * peri, True)
+        
+        for eps_mult in [0.01, 0.02, 0.03, 0.04, 0.05]:
+            approx = cv2.approxPolyDP(cnt, eps_mult * peri, True)
 
-        if len(approx) == 4:
-            x, y, w, h = cv2.boundingRect(approx)
-            area = w * h
-            aspect_ratio = w / float(h) if h > 0 else 0
+            if len(approx) == 4:
+                x, y, w, h = cv2.boundingRect(approx)
+                area = w * h
+                aspect_ratio = w / float(h) if h > 0 else 0
 
-            # rough plate-like shape
-            if 2.0 <= aspect_ratio <= 6.5 and area > 2000:
-                if area > best_area:
-                    best_area = area
-                    best_quad = approx
+                # rough plate-like shape
+                if 2.0 <= aspect_ratio <= 6.5 and area > 1000:
+                    candidates.append((area, approx))
+                break
 
-    if best_quad is not None:
-        cv2.drawContours(debug_frame, [best_quad], -1, (0, 255, 0), 2)
-        pts = best_quad.reshape(4, 2)
-        return order_points(pts), debug_frame
+    # Sort candidates by area descending and take top 3
+    candidates = sorted(candidates, key=lambda x: x[0], reverse=True)[:3]
+    
+    ordered_candidates = []
+    for area, quad in candidates:
+        cv2.drawContours(debug_frame, [quad], -1, (0, 255, 0), 2)
+        pts = quad.reshape(4, 2)
+        ordered_candidates.append(order_points(pts))
 
-    return None, debug_frame
+    return ordered_candidates, debug_frame

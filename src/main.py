@@ -41,7 +41,7 @@ def main():
             break
 
         # ===== 1. DETECTION =====
-        plate_points, debug_frame = detect_plate(frame)
+        candidates, debug_frame = detect_plate(frame)
 
         aligned_plate = None
         ocr_img = None
@@ -50,18 +50,23 @@ def main():
         confirmed = None
 
         # ===== 2. ALIGNMENT =====
-        if plate_points is not None:
-            aligned_plate = align_plate(frame, plate_points)
+        for plate_points in candidates:
+            aligned_plate_cand = align_plate(frame, plate_points)
 
             # ===== 3. OCR =====
-            if aligned_plate is not None:
-                plate_text, ocr_img = read_plate_text(aligned_plate)
+            if aligned_plate_cand is not None:
+                text_cand, ocr_img_cand = read_plate_text(aligned_plate_cand)
+
+                aligned_plate = aligned_plate_cand
+                ocr_img = ocr_img_cand
+                plate_text = text_cand
 
                 # ===== 4. VALIDATION =====
-                valid = is_valid_plate(plate_text)
+                is_valid = is_valid_plate(text_cand)
 
-                # ===== 5. TEMPORAL CONFIRM =====
-                if valid:
+                if is_valid:
+                    valid = True
+                    # ===== 5. TEMPORAL CONFIRM =====
                     confirmed = temporal.update(plate_text)
 
                     # ===== 6. SAVE =====
@@ -69,6 +74,14 @@ def main():
                         saved = storage.save_plate(confirmed)
                         if saved:
                             print(f"[SAVED] {confirmed}")
+                            
+                            # Auto save screenshots
+                            os.makedirs("data/captures", exist_ok=True)
+                            fname = f"data/captures/{confirmed}.png"
+                            cv2.imwrite(fname, frame)
+                            print(f"[CAPTURE] Saved {fname}")
+                    
+                    break
 
         # ===== DISPLAY =====
         display_frame = debug_frame.copy()

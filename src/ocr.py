@@ -3,7 +3,7 @@ import pytesseract
 import re
 
 # Set your Tesseract path here if needed on Windows:
-# pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 
 
 def preprocess_for_ocr(plate_img):
